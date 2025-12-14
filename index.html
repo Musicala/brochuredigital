@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Musicala · Información rápida, planes, precios y horarios. Flujo guiado para inscribirte fácil." />
+  <title>Musicala · Info rápida</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <!-- ================= TOPBAR ================= -->
+  <header class="topbar" id="top">
+    <div class="wrap topbar__inner">
+      <a class="brand" href="#top" aria-label="Ir al inicio">
+        <img src="logo.png" alt="Musicala" class="brand__logo-img" />
+        <span class="brand__text">
+          <strong>Musicala</strong>
+          <span>Escuela de Artes</span>
+        </span>
+      </a>
+
+      <div class="topbar__actions">
+        <a class="btn small ghost" href="https://musicala.github.io/musiedades/" target="_blank" rel="noopener">Rangos de edades</a>
+        <a class="btn small ghost" href="#faq">FAQ</a>
+        <a class="btn small primary" id="waTop" href="#" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- WhatsApp flotante -->
+  <a class="wa-float" id="waFloat" href="#" target="_blank" rel="noopener">
+    <span class="wa-float__dot" aria-hidden="true"></span>
+    WhatsApp
+  </a>
+
+  <main>
+    <!-- ================= HERO ================= -->
+    <section class="hero">
+      <div class="wrap hero__grid">
+        <div class="hero__copy">
+          <div class="badge">Info rápida · Planes · Precios · Horarios · Vacaciones</div>
+          <h1>Te guiamos en 1 minuto para saber qué te sirve, cuánto vale y cuándo puedes empezar.</h1>
+          <p class="lead">
+            Musicala es una escuela de artes (música, danza, artes plásticas y teatro) para niños, jóvenes y adultos.
+            Elige lo que buscas y te dejamos listo el resumen para WhatsApp.
+          </p>
+
+          <div class="cta">
+            <button class="btn primary" id="startBtn">Empezar (paso 1 de 5)</button>
+            <a class="btn ghost" href="#metodos">Métodos de pago</a>
+            <a class="btn ghost" href="https://musicala.github.io/musiedades/" target="_blank" rel="noopener">
+              Ver rangos de edades
+            </a>
+          </div>
+
+          <div class="meta">
+            <div class="meta__item">
+              <span class="meta__k">Modalidades</span>
+              <span class="meta__v">Sede · Hogar · Virtual · Online</span>
+            </div>
+            <div class="meta__item">
+              <span class="meta__k">Ubicación</span>
+              <span class="meta__v">Pasadena · Bogotá (Norte)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= RESUMEN ================= -->
+        <aside class="summary" aria-label="Resumen">
+          <div class="summary__top">
+            <h3>Tu resumen</h3>
+            <span class="pill" id="stepPill">Paso 1/5</span>
+          </div>
+
+          <div class="summary__body" id="summaryBox">
+            <p class="muted">Ve eligiendo opciones y aquí queda todo listo.</p>
+          </div>
+
+          <!-- Cotización -->
+          <div class="micro" style="grid-template-columns:1fr; margin-top:12px;">
+            <div class="micro__card">
+              <h3 style="margin:4px 0 8px;">Tu cotización (imagen)</h3>
+              <p class="tiny muted" style="margin:0 0 10px;">
+                Descárgala o ábrela para compartirla.
+              </p>
+
+              <img
+                id="quoteImg"
+                src="planes%20sede%20personalizado.jpg"
+                alt="Imagen de cotización"
+                style="width:100%; border-radius:16px; display:block; border:1px solid rgba(12,10,30,.10);"
+              />
+
+              <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+                <a class="btn small primary" id="downloadQuoteBtn" href="planes%20sede%20personalizado.jpg" download>
+                  Descargar
+                </a>
+                <a class="btn small ghost" id="openQuoteBtn" href="planes%20sede%20personalizado.jpg" target="_blank" rel="noopener">
+                  Abrir
+                </a>
+              </div>
+
+              <p class="tiny muted" style="margin:10px 0 0;">
+                * Matrícula anual: $60.000 (para adquirir cualquier paquete).
+              </p>
+            </div>
+          </div>
+
+          <div class="summary__actions">
+            <button class="btn small ghost" id="resetBtn" type="button">Reiniciar</button>
+            <a class="btn small primary" id="sendBtn" href="#" target="_blank" rel="noopener">
+              Enviar a WhatsApp
+            </a>
+          </div>
+
+          <p class="tiny muted">Sin formularios eternos. Solo decisiones claras.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================= FLUJO ================= -->
+    <section class="section" id="flow">
+      <div class="wrap">
+        <div class="stepper" role="tablist" aria-label="Pasos">
+          <button class="stepper__step is-active" data-go="1" type="button">
+            <span class="n">1</span><span class="t">Qué es</span>
+          </button>
+          <button class="stepper__step" data-go="2" type="button">
+            <span class="n">2</span><span class="t">Arte</span>
+          </button>
+          <button class="stepper__step" data-go="3" type="button">
+            <span class="n">3</span><span class="t">Modalidad</span>
+          </button>
+          <button class="stepper__step" data-go="4" type="button">
+            <span class="n">4</span><span class="t">Plan</span>
+          </button>
+          <button class="stepper__step" data-go="5" type="button">
+            <span class="n">5</span><span class="t">Horarios</span>
+          </button>
+        </div>
+
+        <!-- PANELES -->
+        <div class="panels">
+
+          <!-- STEP 1 -->
+          <section class="panel is-active" data-step="1">
+            <div class="panel__head">
+              <h2>¿Qué es Musicala?</h2>
+              <p>Versión corta (la única que la gente sí lee):</p>
+            </div>
+
+            <div class="micro">
+              <div class="micro__card">
+                <h3>Escuela de artes</h3>
+                <p>Música, danza, artes plásticas y teatro. Para niños, jóvenes y adultos.</p>
+              </div>
+
+              <div class="micro__card">
+                <h3>Proceso real</h3>
+                <p>Disfrute + disciplina + acompañamiento. Sin presión absurda, pero sí con avance.</p>
+              </div>
+
+              <div class="micro__card">
+                <h3>Modalidades</h3>
+                <p>En sede (Pasadena), Hogar, Virtual en vivo y programas online.</p>
+              </div>
+
+              <div class="micro__card">
+                <h3>Condiciones generales</h3>
+                <p>
+                  • Matrícula anual: <strong>$60.000</strong><br>
+                  • Todos los planes aplican para: <strong>Música, Danza, Artes plásticas y Teatro</strong><br>
+                  • Todos incluyen <strong>clase de prueba</strong> (con costo menor)<br>
+                  • Paquetes disponibles: <strong>4, 8, 12 y 24 clases</strong><br>
+                  • Temporada de descuento: <strong>Cursos Intensivos</strong> (vacaciones)
+                </p>
+              </div>
+            </div>
+
+            <div class="panel__nav">
+              <span class="muted">¿Listo? Sigamos.</span>
+              <button class="btn primary" data-next type="button">Siguiente</button>
+            </div>
+          </section>
+
+          <!-- STEP 2 -->
+          <section class="panel" data-step="2">
+            <div class="panel__head">
+              <h2>¿Qué línea te interesa?</h2>
+              <p>Elige 1 (si quieren varias, lo ponemos en “Dudas” al final).</p>
+            </div>
+
+            <div class="choices" id="lineChoices">
+              <!-- Se llena con JS -->
+            </div>
+
+            <div class="panel__nav">
+              <button class="btn ghost" data-prev type="button">Volver</button>
+              <button class="btn primary" data-next type="button">Siguiente</button>
+            </div>
+          </section>
+
+          <!-- STEP 3 -->
+          <section class="panel" data-step="3">
+            <div class="panel__head">
+              <h2>¿Cómo quieres tomarlo?</h2>
+              <p>Modalidad. Sin misterio.</p>
+            </div>
+
+            <div class="choices" id="modeChoices">
+              <!-- JS -->
+            </div>
+
+            <div class="panel__nav">
+              <button class="btn ghost" data-prev type="button">Volver</button>
+              <button class="btn primary" data-next type="button">Siguiente</button>
+            </div>
+          </section>
+
+          <!-- STEP 4 -->
+          <section class="panel" data-step="4">
+            <div class="panel__head">
+              <h2>Planes y precios</h2>
+              <p>Te mostramos solo lo que aplica según lo que elegiste. (Aquí también puedes ver imágenes de precios).</p>
+            </div>
+
+            <!-- Imágenes generales -->
+            <div class="micro micro--2" style="margin-bottom:12px;">
+              <div class="micro__card">
+                <img id="imgPreciosSede" src="planes%20sede%20personalizado.jpg" alt="Precios en sede" style="width:100%;border-radius:16px;display:block;">
+                <p class="tiny muted" style="margin:10px 0 10px;">Precios en sede (imagen).</p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                  <a class="btn small primary" href="planes%20sede%20personalizado.jpg" download>Descargar</a>
+                  <a class="btn small ghost" href="planes%20sede%20personalizado.jpg" target="_blank" rel="noopener">Abrir</a>
+                </div>
+              </div>
+
+              <div class="micro__card">
+                <img id="imgPreciosHogar" src="planes%20hogar%20personalizado.jpg" alt="Precios hogar, virtual y online" style="width:100%;border-radius:16px;display:block;">
+                <p class="tiny muted" style="margin:10px 0 10px;">Hogar / Virtual / Online (imagen).</p>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                  <a class="btn small primary" href="planes%20hogar%20personalizado.jpg" download>Descargar</a>
+                  <a class="btn small ghost" href="planes%20hogar%20personalizado.jpg" target="_blank" rel="noopener">Abrir</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tipos de planes -->
+            <div class="micro">
+              <div class="micro__card">
+                <h3>En sede</h3>
+                <p>
+                  Personalizado · Cursos libres grupales · Musifamiliar 2P · Musifamiliar grupal (hasta 8)<br>
+                  Preuniversitario · Vacacionales (jun–jul / dic–ene) · Cursos de formación (inicio a fin)<br>
+                  Capacitación artística docente · MusiGym (proceso autónomo con guía)
+                </p>
+              </div>
+
+              <div class="micro__card">
+                <h3>Clases a hogar</h3>
+                <p>
+                  Personalizado · Musifamiliar 2P · Grupal<br>
+                  (A domicilio, según zona)
+                </p>
+              </div>
+
+              <div class="micro__card">
+                <h3>Virtual / Online</h3>
+                <p>
+                  Clases virtuales en vivo · AutoMusicala (programas online autoguiados)<br>
+                  Suscripciones: mensual, bimestral, trimestral y semestral (MusiGym / AutoMusicala)
+                </p>
+              </div>
+
+              <div class="micro__card">
+                <h3>Taller colectivo</h3>
+                <p>
+                  Mismo valor en sede o en cualquier lugar.<br>
+                  Ideal para empresas, familias grandes o grupos grandes.
+                </p>
+              </div>
+            </div>
+
+            <div class="plans" id="planChoices">
+              <!-- JS -->
+            </div>
+
+            <div class="panel__nav">
+              <button class="btn ghost" data-prev type="button">Volver</button>
+              <button class="btn primary" data-next type="button">Siguiente</button>
+            </div>
+          </section>
+
+          <!-- STEP 5 -->
+          <section class="panel" data-step="5">
+            <div class="panel__head">
+              <h2>Horarios y dudas</h2>
+              <p>Esto es lo que necesitamos para darte opciones exactas.</p>
+              <p class="tiny muted" style="margin-top:6px;">
+                Si quieres ver los rangos de edades por programa: 
+                <a href="https://musicala.github.io/musiedades/" target="_blank" rel="noopener" style="text-decoration:underline;">
+                  musicala.github.io/musiedades
+                </a>
+              </p>
+            </div>
+
+            <div class="formish">
+              <div class="row">
+                <label>
+                  Edad del estudiante
+                  <input id="age" type="text" placeholder="Ej: 6 / 14 / Adulto" />
+                </label>
+                <label>
+                  Días posibles
+                  <input id="days" type="text" placeholder="Ej: Lun y mié en la tarde" />
+                </label>
+              </div>
+
+              <label>
+                ¿Qué horarios te sirven?
+                <input id="hours" type="text" placeholder="Ej: 4pm a 6pm / sábados mañana" />
+              </label>
+
+              <label>
+                ¿Te quedó alguna duda?
+                <textarea id="doubts" rows="3" placeholder="Ej: ¿Hay clase de prueba? ¿Cuándo inicia el siguiente ciclo?"></textarea>
+              </label>
+
+              <div class="panel__nav">
+                <button class="btn ghost" data-prev type="button">Volver</button>
+                <button class="btn primary" id="finishBtn" type="button">Listo, enviar a WhatsApp</button>
+              </div>
+
+              <p class="tiny muted">El botón crea el mensaje completo con tu resumen y lo manda a WhatsApp.</p>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= OTROS SERVICIOS ================= -->
+    <section class="section alt" id="otros">
+      <div class="wrap">
+        <div class="section__head">
+          <h2>Otros servicios y alianzas</h2>
+          <p>Para personas, familias y empresas (y sí, también hacemos convenios).</p>
+        </div>
+
+        <div class="micro">
+          <div class="micro__card">
+            <h3>Espacios</h3>
+            <p>Alquiler de espacios para talleres, recitales, galerías, podcasts, etc.</p>
+          </div>
+          <div class="micro__card">
+            <h3>Tienda</h3>
+            <p>Venta de instrumentos · Juegos didácticos · Kits de artes plásticas.</p>
+          </div>
+          <div class="micro__card">
+            <h3>Producción</h3>
+            <p>Estudio casero de grabación (audio, video y foto) para artistas o empresas.</p>
+          </div>
+          <div class="micro__card">
+            <h3>Tecnología creativa</h3>
+            <p>Desarrollo de aplicativos web para empresas creativas.</p>
+          </div>
+          <div class="micro__card">
+            <h3>Tarjetas de regalo</h3>
+            <p>Todos los servicios pueden adquirirse mediante tarjetas de regalo.</p>
+          </div>
+          <div class="micro__card">
+            <h3>Talleres eventuales</h3>
+            <p>Durante el año hacemos talleres de una sola sesión (de vez en cuando).</p>
+          </div>
+        </div>
+
+        <p class="tiny muted" style="margin-top:12px;">
+          También realizamos convenios y alianzas con empresas para ofrecer beneficios a equipos de trabajo.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= MÉTODOS DE PAGO ================= -->
+    <section class="section alt" id="metodos">
+      <div class="wrap">
+        <div class="section__head">
+          <h2>Métodos de pago</h2>
+          <p>Para que nadie pregunte “¿y reciben…?”</p>
+        </div>
+
+        <div class="micro micro--2">
+          <div class="micro__card">
+            <h3>Transferencia o efectivo</h3>
+            <p>Nequi · Bancolombia · Davivienda (ajústalo si quieres).</p>
+          </div>
+          <div class="micro__card">
+            <h3>Tarjeta / link de pago</h3>
+            <p>Tarjeta débito/crédito · Link de pago (si aplica) · Addi (si aplica).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= FAQ ================= -->
+    <section class="section" id="faq">
+      <div class="wrap">
+        <div class="section__head">
+          <h2>FAQ</h2>
+          <p>Preguntas típicas, respuestas claras.</p>
+        </div>
+
+        <div class="faq">
+          <details class="faq__item">
+            <summary>¿Necesito experiencia previa?</summary>
+            <p>No. Tenemos rutas para iniciar desde cero y rutas para continuar procesos.</p>
+          </details>
+
+          <details class="faq__item">
+            <summary>¿Todos los planes son para todas las artes?</summary>
+            <p>Sí. Todos aplican para Música, Danza, Artes plásticas y Teatro.</p>
+          </details>
+
+          <details class="faq__item">
+            <summary>¿Hay clase de prueba?</summary>
+            <p>Sí. Todos los planes incluyen clase de prueba (con un costo menor) según disponibilidad.</p>
+          </details>
+
+          <details class="faq__item">
+            <summary>¿Qué es la matrícula anual?</summary>
+            <p>Para adquirir cualquier paquete se paga una matrícula anual de <strong>$60.000</strong>.</p>
+          </details>
+
+          <details class="faq__item">
+            <summary>¿Qué son los Cursos Intensivos?</summary>
+            <p>Es la temporada de vacaciones con descuento: los mismos planes, pero más económicos (jun–jul y dic–ene).</p>
+          </details>
+
+          <details class="faq__item">
+            <summary>Rangos de edades (programas)</summary>
+            <p>
+              Puedes ver los rangos de edades por programa aquí:
+              <a href="https://musicala.github.io/musiedades/" target="_blank" rel="noopener" style="text-decoration:underline;">
+                musicala.github.io/musiedades
+              </a>
+            </p>
+          </details>
+
+          <details class="faq__item">
+            <summary>Música · Instrumentos y canto</summary>
+            <p>
+              <strong>Viento:</strong> Flauta dulce, Flauta traversa, Clarinete, Saxofón.<br>
+              <strong>Cuerdas pulsadas:</strong> Bajo eléctrico, Ukelele, Guitarra acústica y eléctrica, Bandola, Cuatro.<br>
+              <strong>Cuerdas frotadas:</strong> Violín, Viola, Cello.<br>
+              <strong>Percusión:</strong> Batería, Cajón, Bongos.<br>
+              <strong>Teclado:</strong> Piano (incluye organeta y teclado), Xilófono.<br>
+              <strong>Técnica vocal:</strong> Canto lírico, Canto popular.
+            </p>
+          </details>
+
+          <details class="faq__item">
+            <summary>Danza · Estilos</summary>
+            <p>
+              <strong>Bailes latinos:</strong> Salsa, Bachata, Merengue, Champeta.<br>
+              <strong>Clásica y contemporánea:</strong> Ballet, Danza contemporánea.<br>
+              <strong>Urbanos:</strong> Hip-Hop, Reggaetón, Dancehall.<br>
+              <strong>Folclóricas:</strong> Tango, Bailes colombianos.
+            </p>
+          </details>
+
+          <details class="faq__item">
+            <summary>Artes plásticas</summary>
+            <p>Dibujo · Pintura · Manualidades.</p>
+          </details>
+
+          <details class="faq__item">
+            <summary>Teatro</summary>
+            <p>Procesos de voz, expresión, improvisación y escenas (según nivel).</p>
+          </details>
+
+          <details class="faq__item">
+            <summary>¿Puedo comprar tarjetas de regalo?</summary>
+            <p>Sí. Se pueden vender tarjetas de regalo para todos los servicios.</p>
+          </details>
+
+          <details class="faq__item">
+            <summary>¿Hacen convenios con empresas?</summary>
+            <p>Sí. Realizamos alianzas y convenios para ofrecer beneficios a equipos de trabajo.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="footer">
+      <div class="wrap footer__inner">
+        <div>
+          <strong>Musicala</strong> · Escuela de Artes
+          <div class="tiny muted">WhatsApp: +57 319 352 9475</div>
+        </div>
+        <a class="tiny" href="#top">Volver arriba ↑</a>
+      </div>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
