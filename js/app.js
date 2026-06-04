@@ -1,793 +1,527 @@
 /* global MUSICALA_CATALOG */
+/* =============================================================================
+   Musicala · Brochure Cotizador — LÓGICA (app.js)
+   Vanilla JS. Sin dependencias. Compatible con GitHub Pages.
+============================================================================= */
 (function () {
   'use strict';
 
-  /* =============================================================================
-     Musicala · Catálogo (app.js) — PRO++ v1.2
-     - Robustez extra + accesibilidad (modal focus trap)
-     - Topnav active section (aria-current) + smooth scroll
-     - Fix: collectAllModalitiesFromData() (details.modalities)
-     - Cards más limpias: note SOLO en modal (no en card)
-  ============================================================================= */
+  const CAT = window.MUSICALA_CATALOG || {};
+  const META = CAT.meta || {};
+  const MOD_LABEL = META.modLabel || { sede: 'En sede', hogar: 'A domicilio', virtual: 'Virtual en vivo', online: 'Online' };
+  const AREA_EMOJI = META.areaEmoji || {};
 
-  /* =========================
-     CFG + helpers
-  ========================= */
-  const CFG = (window.MUSICALA_CATALOG && window.MUSICALA_CATALOG.meta) || {};
-  const MOD_LABEL =
-    CFG.modLabel || {
-      sede: 'En sede',
-      hogar: 'A domicilio',
-      virtual: 'Virtual en vivo',
-      online: 'Online',
-    };
+  /* ---------- helpers ---------- */
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 
-  const $ = (sel, el = document) => el.querySelector(sel);
-  const $$ = (sel, el = document) => Array.from(el.querySelectorAll(sel));
-
-  const isFinePointer = () =>
-    window.matchMedia && window.matchMedia('(hover:hover) and (pointer:fine)').matches;
-
-  function escapeHtml(str) {
+  function esc(str) {
     return String(str ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  function encode(text) {
-    return encodeURIComponent(String(text ?? ''));
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
   function waUrl(text) {
-    const num = String(CFG.whatsappNumber || '').trim();
-    if (!num) return `https://wa.me/?text=${encode(text)}`;
-    return `https://wa.me/${num}?text=${encode(text)}`;
+    const num = String(META.whatsappNumber || '').trim();
+    const t = encodeURIComponent(String(text || ''));
+    return num ? `https://wa.me/${num}?text=${t}` : `https://wa.me/?text=${t}`;
+  }
+  function openWa(text, ev) {
+    track(ev || 'click_whatsapp');
+    window.open(waUrl(text), '_blank', 'noopener');
   }
 
-  function fmtModalidades(set) {
-    const arr = Array.from(set || []);
-    if (!arr.length) return '';
-    // Orden “humano” si existen keys conocidas
-    const order = ['sede', 'hogar', 'virtual', 'online'];
-    arr.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-    return arr.map((k) => MOD_LABEL[k] || k).join(', ');
+  /* ---------- analítica segura ---------- */
+  function track(event, params) {
+    try {
+      if (typeof window.gtag === 'function') window.gtag('event', event, params || {});
+      if (window.dataLayer && typeof window.dataLayer.push === 'function') {
+        window.dataLayer.push(Object.assign({ event: event }, params || {}));
+      }
+    } catch (e) { /* nunca romper la página por analítica */ }
   }
+  window.track = track;
 
-  function collectAllModalitiesFromData() {
-    const out = new Set();
-    const cat = window.MUSICALA_CATALOG || {};
-    const all = []
-      .concat(cat.principales || [])
-      .concat(cat.catalogo || []);
-
-    all.forEach((it) => {
-      (it.modalidades || []).forEach((m) => out.add(m));
-      const dm = (it.details && Array.isArray(it.details.modalities) && it.details.modalities) || [];
-      dm.forEach((m) => out.add(m));
-    });
-
-    // fallback a las keys del label
-    if (!out.size) Object.keys(MOD_LABEL).forEach((k) => out.add(k));
-    return out;
-  }
-
-  function buildSummary(custom = {}) {
-    const instrumento = (custom.instrumento ?? state.instrumento) || '';
-    const plan = (custom.plan ?? state.plan) || '';
-    const mod = (custom.modalidad ?? state.modalidad) || new Set();
-    const g = (custom.guia ?? state.guia) || { area: '', formato: '' };
-
-    const parts = [];
-    parts.push('Hola Musicala 👋\n\n');
-
-    if (instrumento || plan) {
-      parts.push('Quiero información de planes y precios para:\n');
-      if (instrumento) parts.push(`• Instrumento/Experiencia: ${instrumento}\n`);
-      if (plan) parts.push(`• Plan: ${plan}\n`);
-
-      // Solo agrega modalidad si hay selección clara (filtro activo por el usuario)
-      if (mod && mod.size) parts.push(`• Modalidad: ${fmtModalidades(mod)}\n`);
-
-      parts.push('\n¿Me comparten opciones y valores, porfa? 🙂');
-      return parts.join('');
-    }
-
-    if (g.area || g.formato) {
-      parts.push('Quiero que me recomienden un plan y precios:\n');
-      if (g.area) parts.push(`• Me interesa: ${g.area}\n`);
-      if (g.formato) parts.push(`• Prefiero: ${g.formato}\n`);
-      parts.push('\n¿Me ayudan con opciones? 🙂');
-      return parts.join('');
-    }
-
-    return String(CFG.defaultText || 'Hola Musicala 👋');
-  }
-
-  /* =========================
-     State
-  ========================= */
-  const state = {
-    modalidad: new Set(), // se inicializa en boot()
-    instrumento: '',
-    focus: '',
-    plan: '',
-    guia: { area: '', formato: '' },
-    lastDetail: null,
-  };
-
-  /* =========================
-     Toast
-  ========================= */
+  /* ---------- toast ---------- */
   let toastT = null;
   function toast(msg) {
-    const el = $('#toast');
-    if (!el) return;
+    const el = $('#toast'); if (!el) return;
     el.textContent = String(msg || '');
     el.classList.add('show');
     clearTimeout(toastT);
     toastT = setTimeout(() => el.classList.remove('show'), 1700);
   }
 
-  /* =========================
-     Modal (accesible)
-  ========================= */
-  let lastFocusEl = null;
-
-  const FOCUSABLE =
-    'a[href], button:not([disabled]), textarea, input, select, details, summary, [tabindex]:not([tabindex="-1"])';
-
-  function trapFocus(modalEl, ev) {
-    if (ev.key !== 'Tab') return;
-
-    const focusables = $$(FOCUSABLE, modalEl).filter((x) => x.offsetParent !== null);
-    if (!focusables.length) return;
-
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-
-    if (ev.shiftKey && document.activeElement === first) {
-      ev.preventDefault();
-      last.focus();
-    } else if (!ev.shiftKey && document.activeElement === last) {
-      ev.preventDefault();
-      first.focus();
-    }
+  /* =========================================================================
+     MENSAJES DE WHATSAPP (contextuales)
+  ========================================================================= */
+  function msgBase(linesObj) {
+    // linesObj: array de {label, value} solo con lo que el usuario eligió
+    const lines = linesObj.filter((l) => l && l.value);
+    let out = 'Hola Musicala 👋\n\nQuiero información de planes y precios para:\n';
+    lines.forEach((l) => { out += `• ${l.label}: ${l.value}\n`; });
+    out += '\n¿Me comparten opciones, horarios y valores?';
+    return out;
   }
 
-  function modalOpen(title, bodyHtml, waPayload) {
-    const modal = $('#modal');
-    if (!modal) return;
-
-    lastFocusEl = document.activeElement;
-
-    const t = $('#modal-title');
-    const b = $('#modal-body');
-    if (t) t.textContent = title || 'Detalle';
-    if (b) b.innerHTML = bodyHtml || '';
-
-    modal.classList.add('show');
-    modal.setAttribute('aria-hidden', 'false');
-    state.lastDetail = waPayload || null;
-
-    document.body.style.overflow = 'hidden';
-
-    // foco inicial
-    const closeBtn = $('#modal-close');
-    (closeBtn || modal).focus?.();
-
-    // trap focus
-    const onKeydown = (ev) => trapFocus(modal, ev);
-    modal.__trap = onKeydown;
-    modal.addEventListener('keydown', onKeydown);
+  // Tarjeta de catálogo: solo experiencia (y modalidad SOLO si hay filtro activo)
+  function msgCatalogo(item) {
+    const lines = [{ label: 'Instrumento/Experiencia', value: item.title }];
+    if (state.modalidad) lines.push({ label: 'Modalidad', value: MOD_LABEL[state.modalidad] });
+    return msgBase(lines);
   }
 
-  function modalClose() {
-    const modal = $('#modal');
-    if (!modal) return;
-
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
-    document.body.style.overflow = '';
-
-    // remove trap
-    if (modal.__trap) {
-      modal.removeEventListener('keydown', modal.__trap);
-      modal.__trap = null;
-    }
-
-    // restore focus
-    if (lastFocusEl && lastFocusEl.focus) lastFocusEl.focus();
-    lastFocusEl = null;
+  // Plan de la tabla de precios
+  function msgPlan(plan) {
+    return msgBase([
+      { label: 'Plan', value: plan.plan },
+      { label: 'Modalidad', value: MOD_LABEL[plan.modalidad] },
+    ]);
   }
 
-  /* =========================
-     WhatsApp Bubble UI
-  ========================= */
-  function updateWaUI() {
-    const sub = $('#wa-fab-sub');
-    const bubble = $('#wa-bubble');
-    const hasPick = !!(state.instrumento || state.plan || state.guia.area || state.guia.formato);
+  /* =========================================================================
+     ESTADO GLOBAL
+  ========================================================================= */
+  const state = {
+    modalidad: '',   // '' = ver todo (NO cuenta como modalidad elegida)
+    area: 'all',     // filtro de área en catálogo
+  };
 
-    if (sub) sub.textContent = hasPick ? 'Escribir sobre esto' : 'Te ayudamos';
-
-    if (bubble) {
-      bubble.classList.toggle('show', hasPick);
-      bubble.textContent = hasPick
-        ? 'Listo. Te armé el mensaje para WhatsApp ✅'
-        : 'Elige una opción y te armo el mensaje ✍️';
-    }
+  /* =========================================================================
+     RENDER: CONFIANZA / PASOS / RUTAS / FAQ / VIDEOS
+  ========================================================================= */
+  function renderConfianza() {
+    const g = $('#trust-grid'); if (!g) return;
+    g.innerHTML = (CAT.confianza || []).map((c) => `
+      <div class="trust-item reveal">
+        <span class="trust-ic">${esc(c.icon)}</span>
+        <span>${esc(c.text)}</span>
+      </div>`).join('');
   }
 
-  /* =========================
-     Rendering
-  ========================= */
-  function renderRail() {
-    const rail = $('#rail-instrumentos');
-    if (!rail) return;
-    rail.innerHTML = '';
-
-    const list = window.MUSICALA_CATALOG?.instrumentos || [];
-    const frag = document.createDocumentFragment();
-
-    list.forEach((item) => {
-      const el = document.createElement('div');
-      el.className = 'chip reveal';
-      el.setAttribute('role', 'button');
-      el.setAttribute('tabindex', '0');
-      el.dataset.focus = String(item.focus || '');
-      el.setAttribute('aria-selected', 'false');
-      el.innerHTML = `
-        <img src="${escapeHtml(item.icon)}" alt="" onerror="this.style.display='none'">
-        <b>${escapeHtml(item.key)}</b>
-      `;
-      frag.appendChild(el);
-    });
-
-    rail.appendChild(frag);
+  function renderPasos() {
+    const g = $('#steps3'); if (!g) return;
+    g.innerHTML = (CAT.pasos || []).map((p) => `
+      <div class="step3 reveal">
+        <div class="step3-n">${esc(p.n)}</div>
+        <h3>${esc(p.title)}</h3>
+        <p>${esc(p.text)}</p>
+      </div>`).join('');
   }
 
-  function cardHtml(item, kind) {
-    // kind: "principal" | "catalogo"
-    const waInstrumento = item.instrumento || '';
-    const waPlan = item.plan || item.waPlan || item.title || '';
+  function renderRutas() {
+    const g = $('#rutas-grid'); if (!g) return;
+    g.innerHTML = (CAT.rutas || []).map((r, i) => `
+      <div class="ruta reveal">
+        <span class="ruta-ic">${esc(r.icon)}</span>
+        <h3>${esc(r.title)}</h3>
+        <p class="hint">Recomendado: ${esc(r.reco)}</p>
+        <button class="mini whats js-ruta" data-i="${i}" type="button">💬 Cotizar por WhatsApp</button>
+      </div>`).join('');
+  }
 
-    const dataAttrs = [
-      `data-id="${escapeHtml(item.id)}"`,
-      item.focus ? `data-focus="${escapeHtml(item.focus)}"` : '',
-      item.modalidades ? `data-modalidades="${escapeHtml(item.modalidades.join(','))}"` : '',
-      item.instrumento ? `data-instrumento="${escapeHtml(item.instrumento)}"` : '',
-      `data-plan="${escapeHtml(item.plan || item.waPlan || item.title || '')}"`,
-    ]
-      .filter(Boolean)
-      .join(' ');
+  function renderFaq() {
+    const g = $('#faq'); if (!g) return;
+    g.innerHTML = (CAT.faqs || []).map((f) => `
+      <details class="faq-item">
+        <summary>${esc(f.q)}</summary>
+        <p>${esc(f.a)}</p>
+      </details>`).join('');
+  }
 
-    return `
-      <article class="card reveal" ${dataAttrs}>
-        <div class="media">
-          <img src="${escapeHtml(item.media)}" alt="${escapeHtml(item.title)}" onerror="this.style.display='none'">
+  function renderVideos() {
+    const g = $('#video-grid'); if (!g) return;
+    g.innerHTML = (CAT.videos || []).map((v) => `
+      <figure class="vcard reveal">
+        <video muted loop playsinline preload="none" poster="${esc(v.poster)}"
+               data-lazy-src="${esc(v.src)}"></video>
+        <figcaption>${esc(AREA_EMOJI[v.area] || '🎬')} ${esc(v.title)}</figcaption>
+      </figure>`).join('');
+    setupLazyVideos();
+  }
+
+  /* =========================================================================
+     RENDER: PRECIOS + FILTROS
+  ========================================================================= */
+  function renderFiltros() {
+    const bar = $('#filterbar'); if (!bar) return;
+    bar.innerHTML = (CAT.filtros || []).map((f) => `
+      <button class="pill js-filter" type="button"
+        data-key="${esc(f.key)}"
+        aria-pressed="${f.key === state.modalidad ? 'true' : 'false'}">${esc(f.label)}</button>`).join('');
+  }
+
+  function renderPrecios() {
+    const g = $('#price-grid'); if (!g) return;
+    const list = (CAT.precios || []).filter((p) => !state.modalidad || p.modalidad === state.modalidad);
+    g.innerHTML = list.map((p, i) => `
+      <article class="price-card reveal">
+        <div class="price-card-top">
+          <h3>${esc(p.nombre)}</h3>
+          <span class="tag">${esc(MOD_LABEL[p.modalidad] || '')}</span>
         </div>
-        <div class="shine" aria-hidden="true"></div>
+        <div class="price-amount">${esc(p.precio)}</div>
+        <p class="price-ideal">${esc(p.ideal)}</p>
+        <button class="mini whats js-plan" data-i="${i}" type="button">💬 Cotizar este plan por WhatsApp</button>
+      </article>`).join('');
+    // guardamos referencia filtrada para los botones
+    g.__list = list;
+    const note = $('#price-note');
+    if (note) note.textContent = CAT.preciosNota || '';
+    setupReveal();
+  }
 
+  /* =========================================================================
+     RENDER: CATÁLOGO + TABS DE ÁREA
+  ========================================================================= */
+  function areas() {
+    const set = [];
+    (CAT.catalogo || []).forEach((c) => { if (!set.includes(c.area)) set.push(c.area); });
+    return set;
+  }
+
+  function renderAreaTabs() {
+    const bar = $('#area-tabs'); if (!bar) return;
+    const tabs = [{ key: 'all', label: 'Todas' }].concat(areas().map((a) => ({ key: a, label: a })));
+    bar.innerHTML = tabs.map((t) => `
+      <button class="pill js-area" type="button"
+        data-area="${esc(t.key)}"
+        aria-pressed="${t.key === state.area ? 'true' : 'false'}">${esc(t.label)}</button>`).join('');
+  }
+
+  function catCardHtml(item) {
+    const emoji = AREA_EMOJI[item.area] || '🎵';
+    const media = item.img
+      ? `<img src="${esc(item.img)}" alt="${esc(item.title)}" loading="lazy" decoding="async"
+             onerror="this.closest('.media').classList.add('noimg')">`
+      : '';
+    return `
+      <article class="cat-card reveal" data-area="${esc(item.area)}" data-mods="${esc((item.modalidades || []).join(','))}">
+        <div class="media ${item.img ? '' : 'noimg'}" data-emoji="${esc(emoji)}">${media}</div>
         <div class="body">
           <div class="top">
-            <h3 class="title">${escapeHtml(item.title)}</h3>
-            <span class="tag">${escapeHtml(item.tag || '')}</span>
+            <h3 class="title">${esc(item.title)}</h3>
+            <span class="tag">${esc(emoji)} ${esc(item.area)}</span>
           </div>
-
-          <ul class="bullets">
-            ${(item.bullets || [])
-              .slice(0, 3)
-              .map((b) => `<li>${escapeHtml(b)}</li>`)
-              .join('')}
-          </ul>
-
-          <div class="price">
-            <b>${escapeHtml(item.price || '')}</b>
-          </div>
-
-          <div class="actions">
-            <button class="mini primary js-choose"
-              data-instrumento="${escapeHtml(waInstrumento)}"
-              data-plan="${escapeHtml(waPlan)}"
-              type="button">💬 WhatsApp</button>
-
-            <button class="mini js-details"
-              data-ref="${escapeHtml(kind)}"
-              data-id="${escapeHtml(item.id)}"
-              type="button">Ver opciones</button>
-          </div>
+          <ul class="bullets">${(item.bullets || []).slice(0, 3).map((b) => `<li>${esc(b)}</li>`).join('')}</ul>
+          <button class="mini whats js-cat" data-id="${esc(item.id)}" type="button">💬 WhatsApp</button>
         </div>
-      </article>
-    `;
-  }
-
-  function renderPrincipales() {
-    const grid = $('#grid-principales');
-    if (!grid) return;
-    grid.innerHTML = (window.MUSICALA_CATALOG?.principales || []).map((p) => cardHtml(p, 'principal')).join('');
+      </article>`;
   }
 
   function renderCatalogo() {
-    const grid = $('#grid-catalogo');
-    if (!grid) return;
-    grid.innerHTML = (window.MUSICALA_CATALOG?.catalogo || []).map((c) => cardHtml(c, 'catalogo')).join('');
+    const g = $('#cat-grid'); if (!g) return;
+    g.innerHTML = (CAT.catalogo || []).map(catCardHtml).join('');
+    applyCatFilters();
+    setupReveal();
   }
 
-  /* =========================
-     Filtering
-  ========================= */
-  function parseMods(card) {
-    return (card.getAttribute('data-modalidades') || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
-
-  function applyFilters() {
-    const cards = $$('#grid-principales .card, #grid-catalogo .card');
-    const selectedMods = state.modalidad;
-    const hasModFilter = selectedMods && selectedMods.size;
-
+  function applyCatFilters() {
+    const cards = $$('#cat-grid .cat-card');
+    let visible = 0;
     cards.forEach((card) => {
-      const mods = parseMods(card);
-      const focus = (card.getAttribute('data-focus') || '').trim();
-      const inst = (card.getAttribute('data-instrumento') || '').trim();
+      const area = card.getAttribute('data-area');
+      const mods = (card.getAttribute('data-mods') || '').split(',').filter(Boolean);
+      const okArea = state.area === 'all' || area === state.area;
+      const okMod = !state.modalidad || mods.includes(state.modalidad);
+      const show = okArea && okMod;
+      card.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    const empty = $('#cat-empty');
+    if (empty) empty.hidden = visible !== 0;
+  }
 
-      // 1) Modalidad:
-      // - si NO hay filtro activo: no filtra
-      // - si hay filtro y el card trae modalidades: debe coincidir al menos una
-      // - si hay filtro pero el card NO trae modalidades: lo dejamos pasar (mejor que "desaparecer" cosas)
-      let ok = true;
-      if (hasModFilter && mods.length) {
-        ok = mods.some((m) => selectedMods.has(m));
-      }
+  /* =========================================================================
+     RECOMENDADOR GUIADO (6 pasos)
+  ========================================================================= */
+  const reco = { idx: 0, answers: {} };
 
-      // 2) Focus:
-      // - si hay focus elegido, deja pasar:
-      //   a) focus exacto
-      //   b) focus "general"
-      //   c) si no hay focus pero el instrumento coincide (fallback)
-      if (ok && state.focus) {
-        ok =
-          focus === state.focus ||
-          focus === 'general' ||
-          (!focus && inst && state.instrumento && inst.toLowerCase() === state.instrumento.toLowerCase());
-      }
+  function recoSteps() { return (CAT.recomendador && CAT.recomendador.pasos) || []; }
 
-      // show/hide con transición
-      if (ok) {
-        card.classList.remove('hide');
-        card.style.display = '';
-      } else {
-        card.classList.add('hide');
-        setTimeout(() => {
-          if (card.classList.contains('hide')) card.style.display = 'none';
-        }, 160);
-      }
+  function recoOptionsFor(step) {
+    if (step.dynamic) {
+      const area = reco.answers[step.dynamic];
+      const map = (CAT.recomendador && CAT.recomendador.intereses) || {};
+      return map[area] || ['No sé, quiero recomendación'];
+    }
+    return step.options || [];
+  }
+
+  function renderReco() {
+    const steps = recoSteps();
+    const wrap = $('#reco-step'); if (!wrap) return;
+
+    // ¿Terminó?
+    if (reco.idx >= steps.length) { renderRecoResult(); return; }
+
+    const step = steps[reco.idx];
+    const opts = recoOptionsFor(step);
+    const current = reco.answers[step.id] || '';
+
+    $('#reco-bar').style.width = ((reco.idx) / steps.length * 100) + '%';
+
+    wrap.innerHTML = `
+      <div class="reco-q">Paso ${reco.idx + 1} de ${steps.length}</div>
+      <h3 class="reco-label">${esc(step.label)}</h3>
+      <div class="reco-opts">
+        ${opts.map((o) => `
+          <button class="opt-btn js-reco-opt" type="button"
+            data-val="${esc(o)}" aria-pressed="${o === current ? 'true' : 'false'}">${esc(o)}</button>`).join('')}
+      </div>`;
+
+    $('#reco-back').hidden = reco.idx === 0;
+    $('#reco-restart').hidden = reco.idx === 0;
+  }
+
+  function recoFieldLine(step) {
+    const v = reco.answers[step.id];
+    if (!v) return null;
+    // Filtramos respuestas tipo "no sé" para no ensuciar el mensaje
+    if (/^no\b|no estoy seguro|no sé|no se todav/i.test(v)) return null;
+    return { label: step.field, value: v };
+  }
+
+  function buildRecoMessage() {
+    const steps = recoSteps();
+    const lines = steps.map(recoFieldLine).filter(Boolean);
+    let out = 'Hola Musicala 👋\n\nQuiero que me recomienden un plan.\n\n';
+    lines.forEach((l) => { out += `• ${l.label}: ${l.value}\n`; });
+    out += '\n¿Me ayudan con opciones, horarios y precios?';
+    return out;
+  }
+
+  function recoSummaryText() {
+    const a = reco.answers;
+    const area = a.area && !/no s/i.test(a.area) ? a.area : null;
+    const interes = a.interes && !/no s/i.test(a.interes) ? a.interes : null;
+    const main = interes || area || 'una clase artística';
+    const mod = a.modalidad && !/no s/i.test(a.modalidad) ? ` en modalidad ${a.modalidad.toLowerCase()}` : '';
+    return `Te recomendamos empezar con ${main}${mod}, en plan personalizado o grupal según disponibilidad de horarios.`;
+  }
+
+  function renderRecoResult() {
+    const wrap = $('#reco-step');
+    $('#reco-bar').style.width = '100%';
+    wrap.innerHTML = `
+      <div class="reco-result">
+        <div class="reco-result-ic">✅</div>
+        <h3 class="reco-label">${esc(recoSummaryText())}</h3>
+        <p class="hint">Te ayudamos a confirmar horarios, cupos y precio final por WhatsApp.</p>
+        <button class="btn primary" id="reco-send" type="button">💬 Enviar recomendación por WhatsApp</button>
+      </div>`;
+    $('#reco-back').hidden = false;
+    $('#reco-restart').hidden = false;
+    $('#reco-send').addEventListener('click', () => openWa(buildRecoMessage(), 'click_whatsapp_recomendador'));
+  }
+
+  function wireReco() {
+    const wrap = $('#reco-step');
+    wrap.addEventListener('click', (e) => {
+      const b = e.target.closest('.js-reco-opt');
+      if (!b) return;
+      const steps = recoSteps();
+      const step = steps[reco.idx];
+      reco.answers[step.id] = b.dataset.val;
+      track('select_' + step.id, { value: b.dataset.val });
+      // avanzar
+      reco.idx++;
+      renderReco();
+      $('#recomendador').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    $('#reco-back').addEventListener('click', () => {
+      if (reco.idx > 0) reco.idx--;
+      renderReco();
+    });
+    $('#reco-restart').addEventListener('click', () => {
+      reco.idx = 0; reco.answers = {};
+      renderReco();
     });
   }
 
-  /* =========================
-     Reveal
-  ========================= */
-  function setupReveal() {
-    const els = $$('.reveal');
-    if (!els.length) return;
+  /* =========================================================================
+     FILTRO DE MODALIDAD (barra visible) — afecta precios y catálogo
+  ========================================================================= */
+  function setModalidad(key) {
+    state.modalidad = key || '';
+    renderFiltros();
+    renderPrecios();
+    applyCatFilters();
+    if (key) { track('select_modalidad', { value: MOD_LABEL[key] }); toast(`Filtro: ${MOD_LABEL[key]} ✅`); }
+    else toast('Mostrando todo ✅');
+    updateWaBubble();
+  }
 
+  /* =========================================================================
+     WHATSAPP FLOTANTE
+  ========================================================================= */
+  function floatingMessage() {
+    if (state.modalidad) {
+      return msgBase([{ label: 'Modalidad', value: MOD_LABEL[state.modalidad] }]);
+    }
+    return META.defaultText || 'Hola Musicala 👋';
+  }
+  function updateWaBubble() {
+    const sub = $('#wa-fab-sub');
+    if (sub) sub.textContent = state.modalidad ? MOD_LABEL[state.modalidad] : 'Te ayudamos';
+  }
+
+  /* =========================================================================
+     LAZY VIDEOS (no hero) + REVEAL
+  ========================================================================= */
+  function setupLazyVideos() {
+    const vids = $$('video[data-lazy-src]');
+    if (!vids.length) return;
     if (!('IntersectionObserver' in window)) {
-      els.forEach((el) => el.classList.add('in'));
+      vids.forEach(loadVideo);
       return;
     }
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add('in');
-            io.unobserve(e.target);
-          }
-        });
-      },
-      { threshold: 0.12 }
-    );
-
-    els.forEach((el) => io.observe(el));
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) { loadVideo(e.target); io.unobserve(e.target); }
+      });
+    }, { rootMargin: '200px' });
+    vids.forEach((v) => io.observe(v));
+  }
+  function loadVideo(v) {
+    const src = v.getAttribute('data-lazy-src');
+    if (!src || v.dataset.loaded) return;
+    const s = document.createElement('source');
+    s.src = src; s.type = 'video/mp4';
+    // Si el video no existe, el poster permanece visible (no rompe layout)
+    v.addEventListener('error', () => { v.removeAttribute('loop'); }, true);
+    v.appendChild(s);
+    v.dataset.loaded = '1';
+    v.removeAttribute('data-lazy-src');
+    v.load();
+    // Solo reproducir cuando haya datos reales; si no, el poster se queda
+    v.addEventListener('loadeddata', () => {
+      const p = v.play(); if (p && p.catch) p.catch(() => {});
+    }, { once: true });
   }
 
-  /* =========================
-     Effects
-  ========================= */
-  function setupHeroTilt() {
-    const hero = $('#hero-tilt');
-    const spec = hero ? $('.specular', hero) : null;
-    if (!hero || !spec) return;
-    if (!isFinePointer()) return;
-
-    hero.addEventListener(
-      'mousemove',
-      (ev) => {
-        const r = hero.getBoundingClientRect();
-        const x = (ev.clientX - r.left) / r.width;
-        const y = (ev.clientY - r.top) / r.height;
-
-        const rx = (y - 0.5) * -6;
-        const ry = (x - 0.5) * 6;
-
-        hero.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg) translateY(-1px)`;
-        hero.style.setProperty('--sx', `${(x - 0.5) * 40}px`);
-        hero.style.setProperty('--sy', `${(y - 0.5) * 40}px`);
-        spec.style.opacity = '0.75';
-      },
-      { passive: true }
-    );
-
-    hero.addEventListener('mouseleave', () => {
-      hero.style.transform = '';
-      spec.style.opacity = '0.55';
-    });
+  let revealIO = null;
+  function setupReveal() {
+    const els = $$('.reveal:not(.in)');
+    if (!els.length) return;
+    if (!('IntersectionObserver' in window)) { els.forEach((el) => el.classList.add('in')); return; }
+    if (!revealIO) {
+      revealIO = new IntersectionObserver((entries) => {
+        entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); revealIO.unobserve(e.target); } });
+      }, { threshold: 0.1 });
+    }
+    els.forEach((el) => revealIO.observe(el));
   }
 
-  function setupCardShine() {
-    if (!isFinePointer()) return;
-
-    document.addEventListener(
-      'mousemove',
-      (ev) => {
-        const card = ev.target.closest && ev.target.closest('.card');
-        if (!card) return;
-        const r = card.getBoundingClientRect();
-        const x = ev.clientX - r.left;
-        const y = ev.clientY - r.top;
-        card.style.setProperty('--cx', `${(x - r.width / 2) * 0.18}px`);
-        card.style.setProperty('--cy', `${(y - r.height / 2) * 0.18}px`);
-      },
-      { passive: true }
-    );
+  /* =========================================================================
+     HERO: si el video no carga, garantizar fallback de imagen
+  ========================================================================= */
+  function setupHeroVideo() {
+    const v = $('#hero-video');
+    if (!v) return;
+    const fail = () => v.classList.add('failed'); // CSS muestra la imagen fallback
+    v.addEventListener('error', fail, true);
+    // Si en ~1.2s no hay datos, asumimos que no existe y mostramos imagen
+    setTimeout(() => { if (v.readyState < 2) fail(); }, 1200);
+    const p = v.play(); if (p && p.catch) p.catch(() => {});
   }
 
-  /* =========================
-     Guided flow
-  ========================= */
-  function renderGuide() {
-    const a = $('#g-area');
-    const f = $('#g-formato');
-    if (!a || !f) return;
-
-    a.innerHTML = (window.MUSICALA_CATALOG?.guided?.areas || [])
-      .map((x) => `<button type="button" data-area="${escapeHtml(x.key)}">${escapeHtml(x.icon)} ${escapeHtml(x.key)}</button>`)
-      .join('');
-
-    f.innerHTML = (window.MUSICALA_CATALOG?.guided?.formatos || [])
-      .map((x) => `<button type="button" data-formato="${escapeHtml(x.key)}">${escapeHtml(x.icon)} ${escapeHtml(x.key)}</button>`)
-      .join('');
-  }
-
-  function setPressed(groupElId, value) {
-    $$('#' + groupElId + ' button').forEach((b) => {
-      const v = b.dataset.area || b.dataset.formato;
-      b.setAttribute('aria-pressed', String(v === value));
-    });
-  }
-
-  /* =========================
-     Detail lookup + modal body
-  ========================= */
-  function findItem(ref, id) {
-    const cat = window.MUSICALA_CATALOG || {};
-    const arr = ref === 'principal' ? cat.principales || [] : cat.catalogo || [];
-    return arr.find((x) => x.id === id) || null;
-  }
-
-  function buildModalBody(item) {
-    const d = item.details || {};
-    const mods = (item.modalidades || d.modalities || []).filter(Boolean);
-
-    const desc = d.desc
-      ? `<div class="hint" style="font-size:13px; color:rgba(11,16,32,.78)">${escapeHtml(d.desc)}</div>`
-      : '';
-
-    const modsHtml = mods.length
-      ? `<div class="hint"><b>Modalidades:</b> ${mods.map((m) => escapeHtml(MOD_LABEL[m] || m)).join(' · ')}</div>`
-      : '';
-
-    const inc =
-      Array.isArray(d.include) && d.include.length
-        ? `<ul class="bullets">${d.include.map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ul>`
-        : '';
-
-    const note = item.note ? `<div class="hint" style="margin-top:8px;">${escapeHtml(item.note)}</div>` : '';
-
-    return `
-      ${desc}
-      ${modsHtml}
-      <div class="panel" style="padding:12px; border-radius:18px; margin-top:10px;">
-        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-          <b style="font-size:14px;">${escapeHtml(item.price || 'Precio')}</b>
-          <span class="hint">${escapeHtml(item.tag || '')}</span>
-        </div>
-        ${inc}
-        ${note}
-      </div>
-      <div class="hint" style="margin-top:10px;">Tip: si me dices tu edad y objetivo (hobby, nivel, presentación), te recomiendo mejor 🙂</div>
-    `;
-  }
-
-  /* =========================
-     Topnav: smooth + active section
-  ========================= */
-  function setupTopnav() {
-    const links = $$('.topnav a[href^="#"]');
-    if (!links.length) return;
-
-    // Smooth scroll (sin depender de CSS)
+  /* =========================================================================
+     EVENTOS GLOBALES
+  ========================================================================= */
+  function wireEvents() {
+    // data-track en cualquier elemento
     document.addEventListener('click', (e) => {
-      const a = e.target.closest && e.target.closest('.topnav a[href^="#"]');
+      const t = e.target.closest('[data-track]');
+      if (t) track(t.getAttribute('data-track'));
+    });
+
+    // Filtros de modalidad
+    $('#filterbar')?.addEventListener('click', (e) => {
+      const b = e.target.closest('.js-filter'); if (!b) return;
+      setModalidad(b.dataset.key);
+    });
+
+    // Tabs de área
+    $('#area-tabs')?.addEventListener('click', (e) => {
+      const b = e.target.closest('.js-area'); if (!b) return;
+      state.area = b.dataset.area;
+      track('select_area', { value: state.area });
+      renderAreaTabs();
+      applyCatFilters();
+    });
+
+    // Catálogo → WhatsApp
+    $('#cat-grid')?.addEventListener('click', (e) => {
+      const b = e.target.closest('.js-cat'); if (!b) return;
+      const item = (CAT.catalogo || []).find((x) => x.id === b.dataset.id);
+      if (!item) return;
+      track('click_whatsapp_card', { item: item.title });
+      openWa(msgCatalogo(item), 'click_whatsapp_card');
+    });
+
+    // Precios → WhatsApp
+    $('#price-grid')?.addEventListener('click', (e) => {
+      const b = e.target.closest('.js-plan'); if (!b) return;
+      const list = $('#price-grid').__list || [];
+      const plan = list[Number(b.dataset.i)];
+      if (!plan) return;
+      openWa(msgPlan(plan), 'click_whatsapp_card');
+    });
+
+    // Rutas → WhatsApp
+    $('#rutas-grid')?.addEventListener('click', (e) => {
+      const b = e.target.closest('.js-ruta'); if (!b) return;
+      const r = (CAT.rutas || [])[Number(b.dataset.i)];
+      if (!r) return;
+      openWa('Hola Musicala 👋\n\n' + r.wa + '\n\n¿Me comparten opciones, horarios y valores?', 'click_whatsapp_ruta');
+    });
+
+    // CTAs WhatsApp generales
+    $('#hero-wa')?.addEventListener('click', () => openWa(floatingMessage(), 'click_whatsapp_hero'));
+    $('#wa-fab')?.addEventListener('click', () => openWa(floatingMessage(), 'click_whatsapp_fab'));
+    const footWa = $('#foot-wa');
+    if (footWa) {
+      footWa.setAttribute('href', waUrl(META.defaultText || 'Hola Musicala 👋'));
+      footWa.setAttribute('target', '_blank');
+      footWa.setAttribute('rel', 'noopener');
+    }
+
+    // Smooth scroll topnav
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest('.topnav a[href^="#"], a.btn[href^="#"]');
       if (!a) return;
-
       const id = (a.getAttribute('href') || '').slice(1);
-      const sec = id ? document.getElementById(id) : null;
+      const sec = id && document.getElementById(id);
       if (!sec) return;
-
       e.preventDefault();
       sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
-
-    // Active highlight
-    const map = new Map();
-    links.forEach((a) => {
-      const id = (a.getAttribute('href') || '').slice(1);
-      if (!id) return;
-      const sec = document.getElementById(id);
-      if (sec) map.set(sec, a);
-    });
-
-    if (!('IntersectionObserver' in window) || !map.size) return;
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        // el que esté más “presente” gana
-        const visible = entries
-          .filter((x) => x.isIntersecting)
-          .sort((a, b) => (b.intersectionRatio || 0) - (a.intersectionRatio || 0))[0];
-
-        if (!visible) return;
-
-        links.forEach((a) => a.removeAttribute('aria-current'));
-        const a = map.get(visible.target);
-        if (a) a.setAttribute('aria-current', 'page');
-      },
-      {
-        root: null,
-        threshold: [0.2, 0.35, 0.5, 0.65],
-      }
-    );
-
-    map.forEach((_a, sec) => io.observe(sec));
   }
 
-  /* =========================
-     Events
-  ========================= */
-  function wireEvents() {
-    // Modalidad pills (si existen)
-    const pills = $$('.pillbar .pill');
-    pills.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const key = btn.dataset.filter;
-        if (!key) return;
-
-        const isOn = btn.getAttribute('aria-pressed') === 'true';
-        btn.setAttribute('aria-pressed', String(!isOn));
-
-        if (isOn) state.modalidad.delete(key);
-        else state.modalidad.add(key);
-
-        applyFilters();
-        updateWaUI();
-        toast('Filtro aplicado ✅');
-      });
-    });
-
-    // Rail chips (toggle + reset)
-    const rail = $('#rail-instrumentos');
-
-    const selectChip = (chip) => {
-      if (!chip) return;
-
-      const wasSelected = chip.getAttribute('aria-selected') === 'true';
-
-      // reset all
-      $$('#rail-instrumentos .chip').forEach((c) => c.setAttribute('aria-selected', 'false'));
-
-      if (wasSelected) {
-        // toggle off
-        state.focus = '';
-        state.instrumento = '';
-        state.plan = '';
-        updateWaUI();
-        applyFilters();
-        toast('Mostrando todo ✅');
-        return;
-      }
-
-      chip.setAttribute('aria-selected', 'true');
-      state.focus = chip.dataset.focus || '';
-      state.instrumento = chip.querySelector('b')?.textContent?.trim() || '';
-      state.plan = '';
-
-      updateWaUI();
-      applyFilters();
-
-      $('#catalogo')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      toast(`Mostrando: ${state.instrumento} ✨`);
-    };
-
-    rail?.addEventListener('click', (e) => {
-      const chip = e.target.closest('.chip');
-      selectChip(chip);
-    });
-
-    rail?.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      const chip = e.target.closest('.chip');
-      if (!chip) return;
-      e.preventDefault();
-      selectChip(chip);
-    });
-
-    // Choose (WhatsApp)
-    document.addEventListener('click', (e) => {
-      const btn = e.target.closest('.js-choose');
-      if (!btn) return;
-
-      const inst = (btn.dataset.instrumento || '').trim();
-      const plan = (btn.dataset.plan || '').trim();
-
-      if (inst) state.instrumento = inst;
-      if (plan) state.plan = plan;
-
-      updateWaUI();
-      window.open(waUrl(buildSummary()), '_blank', 'noopener');
-    });
-
-    // Details modal
-    document.addEventListener('click', (e) => {
-      const btn = e.target.closest('.js-details');
-      if (!btn) return;
-
-      const ref = btn.dataset.ref || 'catalogo';
-      const id = btn.dataset.id || '';
-      const item = findItem(ref, id);
-
-      if (!item) {
-        toast('No encontré ese detalle 😅');
-        return;
-      }
-
-      const title = item.details?.title || item.title || 'Detalle';
-      const body = buildModalBody(item);
-
-      const payload = {
-        instrumento: item.instrumento || state.instrumento || '',
-        plan: item.plan || item.waPlan || item.title || '',
-      };
-
-      modalOpen(title, body, payload);
-    });
-
-    // Modal close (backdrop / close buttons)
-    $('#modal')?.addEventListener('click', (e) => {
-      const close = e.target.closest("[data-close='1']");
-      if (close) modalClose();
-    });
-    $('#modal-close')?.addEventListener('click', modalClose);
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && $('#modal')?.classList.contains('show')) modalClose();
-    });
-
-    $('#modal-wa')?.addEventListener('click', () => {
-      const p = state.lastDetail || null;
-      if (p) {
-        state.instrumento = p.instrumento || state.instrumento;
-        state.plan = p.plan || state.plan;
-      }
-      updateWaUI();
-      window.open(waUrl(buildSummary(p || {})), '_blank', 'noopener');
-    });
-
-    // Guided flow
-    $('#g-area')?.addEventListener('click', (e) => {
-      const b = e.target.closest('button');
-      if (!b) return;
-      state.guia.area = b.dataset.area || '';
-      setPressed('g-area', state.guia.area);
-      const r = $('#g-result');
-      if (r) r.textContent = `Ok. Te interesa: ${state.guia.area}. Ahora elige cómo prefieres aprender.`;
-      updateWaUI();
-      toast('Listo ✅');
-    });
-
-    $('#g-formato')?.addEventListener('click', (e) => {
-      const b = e.target.closest('button');
-      if (!b) return;
-      state.guia.formato = b.dataset.formato || '';
-      setPressed('g-formato', state.guia.formato);
-      const r = $('#g-result');
-      if (r) r.textContent = `Listo ✅ ${state.guia.area || '—'} · ${state.guia.formato}.`;
-      updateWaUI();
-      toast('Perfecto ✅');
-    });
-
-    $('#g-to-wa')?.addEventListener('click', () => {
-      updateWaUI();
-      window.open(waUrl(buildSummary()), '_blank', 'noopener');
-    });
-
-    $('#g-clear')?.addEventListener('click', () => {
-      state.guia.area = '';
-      state.guia.formato = '';
-      setPressed('g-area', '__none__');
-      setPressed('g-formato', '__none__');
-      const r = $('#g-result');
-      if (r) r.textContent = 'Elige 1 opción en cada paso y te armo el mensaje.';
-      updateWaUI();
-      toast('Limpio ✅');
-    });
-
-    // Hero guide button
-    $('#btn-guia')?.addEventListener('click', () => {
-      $('#guia')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-
-    // Floating WA
-    $('#wa-fab')?.addEventListener('click', () => {
-      updateWaUI();
-      window.open(waUrl(buildSummary()), '_blank', 'noopener');
-    });
-  }
-
-  /* =========================
-     Boot
-  ========================= */
-  function initModalidadState() {
-    // Si hay pills visibles, dejamos que el usuario filtre.
-    // Si NO hay pills, arrancamos con todas las modalidades existentes para que no se “pierda” el catálogo.
-    const hasPills = $$('.pillbar .pill').length > 0;
-    if (hasPills) {
-      // default “sin filtro” (muestra todo); si quieres sede-only, pon: new Set(["sede"])
-      state.modalidad = new Set();
-      return;
-    }
-    state.modalidad = collectAllModalitiesFromData(); // muestra todo disponible
-  }
-
+  /* =========================================================================
+     BOOT
+  ========================================================================= */
   function boot() {
-    if (!window.MUSICALA_CATALOG) {
-      console.warn('MUSICALA_CATALOG no está cargado. Revisa data.js antes de app.js');
-      return;
-    }
-
-    initModalidadState();
-
-    renderRail();
-    renderPrincipales();
+    if (!window.MUSICALA_CATALOG) { console.warn('MUSICALA_CATALOG no cargado'); return; }
+    renderConfianza();
+    renderPasos();
+    renderRutas();
+    renderFaq();
+    renderVideos();
+    renderFiltros();
+    renderPrecios();
+    renderAreaTabs();
     renderCatalogo();
-    renderGuide();
-
-    applyFilters();
-    updateWaUI();
-
-    setupTopnav();
-    setupHeroTilt();
-    setupCardShine();
-    setupReveal();
-
+    renderReco();
+    wireReco();
     wireEvents();
+    setupHeroVideo();
+    setupReveal();
+    updateWaBubble();
+    setTimeout(() => { const b = $('#wa-bubble'); if (b) b.classList.add('show'); }, 2500);
   }
 
-  boot();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();
