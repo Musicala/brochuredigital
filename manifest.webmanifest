@@ -1,0 +1,15 @@
+{
+  "name": "Musicala · Clases de arte",
+  "short_name": "Musicala",
+  "description": "Clases de música, danza, artes plásticas y teatro en Bogotá. Sede, domicilio, virtual y online.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f8ff",
+  "theme_color": "#f6f8ff",
+  "lang": "es-CO",
+  "icons": [
+    { "src": "./assets/ui/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./assets/ui/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
