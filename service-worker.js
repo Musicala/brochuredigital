@@ -1,5 +1,5 @@
-/* Musicala · Service Worker mínimo (cache básico de archivos esenciales) */
-const CACHE = 'musicala-v2';
+/* Musicala · Service Worker (archivos esenciales para PWA) */
+const CACHE = 'musicala-v2.1';
 const CORE = [
   './',
   './index.html',
@@ -7,6 +7,10 @@ const CORE = [
   './js/data.js',
   './js/app.js',
   './manifest.webmanifest',
+  './assets/ui/logo-musicala-transparente.png',
+  './assets/ui/favicon.png',
+  './assets/ui/icon-192.png',
+  './assets/ui/icon-512.png',
 ];
 
 self.addEventListener('install', (e) => {
